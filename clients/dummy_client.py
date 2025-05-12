@@ -3,10 +3,13 @@
 # dependencies = [ "mcp[cli]", "openai", "httpx", "anyio", "prompt_toolkit", "jsonpickle"]
 # ///
 
+import json
 import asyncio
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 from contextlib import AsyncExitStack
+
+from openai import OpenAI
 
 from dotenv import load_dotenv
 
@@ -26,7 +29,34 @@ async def main():
             
             # List available tools
             mcp_tools = await mcp_session.list_tools()
-            print(mcp_tools)
+
+            tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": {
+                            k: v 
+                            for k, v in tool.inputSchema.items()
+                            if k not in ["additionalProperties", "$schema", "title"]
+                        }
+                    }
+                }
+                for tool in mcp_tools.tools
+            ]
+
+            client = OpenAI()
+
+            response = client.chat.completions.create(
+                model="gpt-4.1",
+                messages=[
+                    {"role": "user", "content": "list files"}
+                ],
+                tools=tools,
+            )
+
+            print(response)
             
         except Exception as e:
             print(f"Error occurred: {e}")
