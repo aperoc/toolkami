@@ -3,7 +3,7 @@
 # dependencies = [ "mcp[cli]", "openai", "httpx", "anyio", "prompt_toolkit", "jsonpickle"]
 # ///
 
-import json
+import os
 import asyncio
 from mcp import ClientSession
 from mcp.client.sse import sse_client
@@ -13,7 +13,10 @@ from openai import OpenAI
 
 from dotenv import load_dotenv
 
-load_dotenv()
+current_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(current_dir, '.env')
+print(f"Loading .env file from: {env_path}")
+load_dotenv(env_path, override=True)  # Added override=True to ensure values are set
 
 async def main():
     async with AsyncExitStack() as exit_stack:
@@ -46,10 +49,23 @@ async def main():
                 for tool in mcp_tools.tools
             ]
 
-            client = OpenAI()
+            # client = OpenAI()
+            # Gemini
+            # client = OpenAI(
+            #     api_key=os.getenv("GEMINI_API_KEY"),
+            #     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            # )
+            # Vertex
+
+            base_url = f"https://{os.environ['GOOGLE_VERTEX_LOCATION']}-aiplatform.googleapis.com/v1beta1/projects/{os.environ['GOOGLE_VERTEX_PROJECT']}/locations/{os.environ['GOOGLE_VERTEX_LOCATION']}/endpoints/openapi"
+            client = OpenAI(
+                base_url=base_url
+            )
 
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                # model="gpt-4.1",
+                # model="gemini-2.0-flash",
+                model=f"google/{os.environ['GEMINI_MODEL']}",
                 messages=[
                     {"role": "user", "content": "list files"}
                 ],
