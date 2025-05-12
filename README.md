@@ -17,7 +17,7 @@ async def ask(question: str) -> str:
 
 Devcontainer (`.devcontainer`) included and useable, otherwise proceed with manual install.
 
-1. Provide credentials in `.env` file.
+1. Provide credentials in `servers/.env` file.
 
 2. Install UV:
 ```bash
@@ -49,3 +49,5 @@ cd servers && PYTHONPATH=. uv run app.py --reload
 
 ## Limitations
 - This is a customisable sharp tool for now. Guardrails will only be implemented over time.
+
+For enquiries, feel free to reach out to toolkami@aperoc.com.

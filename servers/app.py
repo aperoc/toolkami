@@ -8,7 +8,13 @@ from typing import List, Type, Dict, Any
 from sse_server import create_starlette_app
 from dotenv import load_dotenv
 
-load_dotenv()
+# Get the directory where app.py is located
+current_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(current_dir, '.env')
+print(f"Loading .env file from: {env_path}")
+load_dotenv(env_path, override=True)  # Added override=True to ensure values are set
+# print(f"Current working directory: {os.getcwd()}")
+# print(f"All environment variables: {dict(os.environ)}")
 
 # Environment variable for storing config in reload mode
 CONFIG_ENV = 'MCP_SERVER_CONFIG'
