@@ -1,6 +1,6 @@
 #!/usr/bin/env -S PYTHONPATH=. uv run --script
 # /// script
-# dependencies = [ "mcp[cli]", "google-genai", "httpx", "anyio", "prompt_toolkit", "jsonpickle"]
+# dependencies = [ "mcp[cli]", "openai", "httpx", "anyio", "prompt_toolkit", "jsonpickle"]
 # ///
 
 import asyncio
@@ -21,8 +21,8 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.styles import Style
 
-from google import genai
-from google.genai import types # Keep this
+import json
+from openai import OpenAI
 
 from mcp import ClientSession
 from mcp.client.sse import sse_client
@@ -169,16 +169,18 @@ class MCPClient:
 
         self.prompt_session = PromptSession(history=None)
 
-        if os.getenv("GEMINI_API_KEY"):
-            self.provider = genai.Client(
-                api_key=os.getenv("GEMINI_API_KEY")
+        if os.getenv("GOOGLE_VERTEX_PROJECT") and os.getenv("GOOGLE_VERTEX_LOCATION"):
+            base_url = f"https://{os.getenv('GOOGLE_VERTEX_LOCATION')}-aiplatform.googleapis.com/v1beta1/projects/{os.getenv('GOOGLE_VERTEX_PROJECT')}/locations/{os.getenv('GOOGLE_VERTEX_LOCATION')}/endpoints/openapi"
+            self.provider = OpenAI(
+                base_url=base_url
+            )
+        elif os.getenv("GEMINI_API_KEY"):
+            self.provider = OpenAI(
+                api_key=os.getenv("GEMINI_API_KEY"),
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
             )
         else:
-            self.provider = genai.Client(
-                vertexai=True,
-                project=os.getenv("GOOGLE_VERTEX_PROJECT"),
-                location=os.getenv("GOOGLE_VERTEX_LOCATION"),
-            )
+            self.provider = OpenAI()
 
         self.agent = Agent()
 
@@ -225,41 +227,40 @@ class MCPClient:
 
         mcp_tools = await self.mcp_session.list_tools()
 
-        tools =[
-            types.Tool(
-                function_declarations=[{
+        tools = [
+            {
+                "type": "function",
+                "function": {
                     "name": tool.name,
                     "description": tool.description,
                     "parameters": {
                         k: v 
                         for k, v in tool.inputSchema.items()
-                        if k not in ["additionalProperties", "$schema"]
-                    },
-                }]
-            )
+                        if k not in ["additionalProperties", "$schema", "title"]
+                    }
+                }
+            }
             for tool in mcp_tools.tools
         ]
 
         self.agent.add_content(
-            types.Content(
-                role="user", 
-                parts=[types.Part(text=query)]
-            )
+            {
+                "role": "user", 
+                "content": query
+            }
         )
 
         while True:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
-                print_pt(f"[DEBUG] Gemini Content History: {self.agent.content_history}", "output.debug")
+                print_pt(f"[DEBUG] Content History: {self.agent.content_history}", "output.debug")
 
             try:
-                response = self.provider.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL"),
-                    contents=self.agent.content_history,
-                    config=types.GenerateContentConfig(
-                        temperature=0.1, # Slightly increase temperature to encourage more relevant responses while maintaing some consistency
-                        tools=tools,
-                        system_instruction=self.agent.system_instruction,
-                    ),
+                response = self.provider.chat.completions.create(
+                    model=f"google/{os.getenv("GEMINI_MODEL")}", # TODO: Make this configurable
+                    messages=self.agent.content_history,
+                    temperature=0.1,
+                    tools=tools,
+                    # instructions=self.agent.system_instruction, # TODO: Add back system instructions.
                 )
             except Exception as e:
                 print_pt(f"[ERROR] Error generating content: {e}", "output.error")
@@ -273,89 +274,61 @@ class MCPClient:
             if logging.getLogger().isEnabledFor(logging.DEBUG):
                 print_pt(f"[DEBUG] Gemini response: {response}", "output.debug")
 
-            print_pt(f"[WARNING] Token usage: {response.usage_metadata.total_token_count} / 1,047,576", "output.warning")
+            print_pt(f"[WARNING] Token usage: {response.usage.total_tokens} / 1,047,576", "output.warning")
 
-            candidate = response.candidates[0]
+            candidate = response.choices[0]
 
-            if not candidate.content:
-                print_pt("[ERROR] No content received from Gemini API", "output.error")
+            if not candidate.message:
+                print_pt("[ERROR] No content received from OpenAI API", "output.error")
                 print_pt(str(response), "output.error")
 
-            if not candidate.content.parts:
-                print_pt("[ERROR] No parts received from Gemini API", "output.error")
-                print_pt(str(response), "output.error")
-                print_pt(str(self.agent.content_history), "output.warning")
-                # Malformed function call, continue to the next part
-                continue
+            self.agent.add_content(candidate.message)
+            self.agent.save_history()
 
-            for part in candidate.content.parts:
-                if part.function_call:
-                    # Please ensure that the number of function response parts is equal to the number of function call parts of the function call turn.
-                    self.agent.add_content(
-                        types.Content(
-                            role="model",
-                            parts=[part]
-                        )
-                    )
-
-                    function_call = part.function_call
-                    print_pt(f"[TOOL] Function call: {function_call.name}, args: {truncate_text_both_ends(str(function_call.args))}", "output.tool")
+            if candidate.message.tool_calls:
+                for tool_call in candidate.message.tool_calls:
+                    function_call = tool_call.function
+                
+                    print_pt(f"[TOOL] Function call: {function_call.name}, args: {truncate_text_both_ends(str(function_call.arguments))}", "output.tool")
 
                     tool_result = await self.mcp_session.call_tool(
                         function_call.name,
-                        arguments=dict(function_call.args),
+                        arguments=json.loads(function_call.arguments),
                     )
                     print_pt(f"[TOOL] Tool result: {truncate_text_both_ends(str(tool_result))}", "output.tool")
 
-                    function_response_part = types.Part.from_function_response(
-                        name = function_call.name,
-                        response = { "result": tool_result },
-                    )
                     self.agent.add_content(
-                        types.Content(
-                            role="user",
-                            parts=[function_response_part]
-                        )
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "name": function_call.name,
+                            "content": tool_result.content
+                        }
                     )
 
                     if function_call.name == "ask":
                         # get user input
-                        print(f"Model (clarification): {function_call.args['question']}")
+                        print(f"Model (clarification): {tool_result.content[0].text}")
                         answer = await self.prompt_session.prompt_async(
                             FormattedText([("class:prompt", "User (clarification): ")]),
                             style=PROMPT_STYLE_OBJ
                         )
 
                         self.agent.add_content(
-                            types.Content(
-                                role="user", 
-                                parts=[types.Part(text=answer)]
-                            )
+                            {
+                                "role": "user",
+                                "content": answer
+                            }
                         )
 
-                else:
-
-                    # Skip empty parts
-                    if len(part.text.strip()) == 0:
-                        continue
-
-                    self.agent.add_content(
-                        types.Content(
-                            role="model",
-                            parts=[part]
-                        )
-                    )
-                    print(f"Model:\n{part.text.strip()}")
-
-                self.agent.save_history()
+            else:
 
                 # TODO: hack for pro-active tool calling
                 self.agent.add_content(
-                    types.Content(
-                        role="user",
-                        # parts=[types.Part(text="Continue with the next needful action or if it starts to get repetitive, use the 'think' tool to think or use the 'ask' tool to ask the user for input.")]
-                        parts=[types.Part(text="Continue with the next needful action or if it starts to get repetitive, use the 'think' tool to figure out next action or how to make it better.")]
-                    )
+                    {
+                        "role": "user",
+                        "content": "Continue with the next needful action or if it starts to get repetitive, use the 'think' tool to figure out next action or how to make it better, or finally use the 'ask' tool to ask the user for input."
+                    }
                 )
 
 
