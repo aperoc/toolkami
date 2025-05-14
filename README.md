@@ -43,7 +43,7 @@ cd servers && PYTHONPATH=. uv run app.py --reload
 # For native Gemini client
 ./clients/gemini_client.py http://localhost:8081/sse # --debug
 
-# For OpenAI-compatible clients
+# For OpenAI-compatible clients (including Anthropic)
 ./clients/openai_client.py http://localhost:8081/sse # --debug
 ```
 
@@ -51,7 +51,7 @@ cd servers && PYTHONPATH=. uv run app.py --reload
 * Delete `content_history.json` to clear message history.
 
 ## Roadmap
-* [x] OpenAI compatible API
+* [x] OpenAI compatible APIs (including Anthropic)
 * [ ] System prompt guidelines with single file project templates
 
 ## Limitations
