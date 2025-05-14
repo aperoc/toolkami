@@ -5,7 +5,7 @@ from google.genai import types
 class Agent:
     def __init__(self):
 
-        self.system_instruction=[]
+        self.system_instruction=""
         self._initialize_system_instruction()
 
         if os.path.exists("content_history.json"):
@@ -24,9 +24,9 @@ class Agent:
     
     def _initialize_system_instruction(self):
         """Initializes the system instruction with the default prompt."""
-        self.system_instruction = ["""You are a pro-active AI assistant that is confident and proceeds to carry out next action required to complete the user's request.
+        self.system_instruction = """You are a pro-active AI assistant that is confident and proceeds to carry out next action required to complete the user's request.
 Always use the tool 'ask' to ask the user for clarification if user input is required e.g. what to do next.
-"""]
+"""
 
     def _initialize_history(self):
         """Initializes the content history with the default prompt."""

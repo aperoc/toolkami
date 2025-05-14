@@ -17,7 +17,7 @@ async def ask(question: str) -> str:
 
 Devcontainer (`.devcontainer`) included and useable, otherwise proceed with manual install.
 
-1. Provide credentials in `servers/.env` file.
+1. Provide credentials in `servers/.env` (used for browsing LLM) and `clients/.env` (used by agent) file accordingly.
 
 2. Install UV:
 ```bash
@@ -40,11 +40,18 @@ cd servers && PYTHONPATH=. uv run app.py --reload
 
 4. Start the MCP client (`self-executable UV script`):
 ```bash
+# For native Gemini client
 ./clients/gemini_client.py http://localhost:8081/sse # --debug
+
+# For OpenAI-compatible clients
+./clients/openai_client.py http://localhost:8081/sse # --debug
 ```
 
+## Troubleshooting
+* Delete `content_history.json` to clear message history.
+
 ## Roadmap
-* [ ] OpenAI compatible API, Anthropic support
+* [x] OpenAI compatible API
 * [ ] System prompt guidelines with single file project templates
 
 ## Limitations

@@ -179,10 +179,21 @@ class MCPClient:
                 api_key=os.getenv("GEMINI_API_KEY"),
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
             )
+        elif os.getenv("ANTHROPIC_API_KEY"):
+            self.provider = OpenAI(
+                api_key=os.getenv("ANTHROPIC_API_KEY"),
+                base_url="https://api.anthropic.com/v1/"
+            )
         else:
             self.provider = OpenAI()
 
         self.agent = Agent()
+        if len(self.agent.content_history) == 0:
+            print_pt("[WARNING] Adding system instruction to content history...", "output.warning")
+            self.agent.content_history.append({
+                "role": "system",
+                "content": self.agent.system_instruction
+            })
 
     async def _connect_internal(self):
         """Internal logic to establish a connection."""
@@ -256,11 +267,10 @@ class MCPClient:
 
             try:
                 response = self.provider.chat.completions.create(
-                    model=f"google/{os.getenv("GEMINI_MODEL")}", # TODO: Make this configurable
+                    model=os.getenv("MAIN_MODEL"),
                     messages=self.agent.content_history,
                     temperature=0.1,
                     tools=tools,
-                    # instructions=self.agent.system_instruction, # TODO: Add back system instructions.
                 )
             except Exception as e:
                 print_pt(f"[ERROR] Error generating content: {e}", "output.error")
