@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/aperoc-toolkami-badge.png)](https://mseep.ai/app/aperoc-toolkami)
+
 # Toolkami
 
 **Seven tools is all you need**. A minimal AI agent that just works, using only seven tools. Comes with hands-free `Turbo mode` and `Hot-reloading` for self-modification.
