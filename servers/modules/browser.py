@@ -1,5 +1,7 @@
 from langchain_google_vertexai import ChatVertexAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from browser_use import Agent, Browser, BrowserConfig, BrowserContextConfig
 from pathlib import Path
 import os
@@ -19,13 +21,23 @@ class BrowserModule:
         if os.getenv("GEMINI_API_KEY"):
             os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")
             self.llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash-preview-04-17",
+                model=os.getenv("BROWSE_MODEL"),
                 temperature=0,
                 max_retries=3,
             )
+        elif os.getenv("OPENAI_API_KEY"):
+            self.llm=ChatOpenAI(
+                model=os.getenv("BROWSE_MODEL"),
+            )
+        elif os.getenv("ANTHROPIC_API_KEY"):
+            self.llm=ChatAnthropic(
+                model=os.getenv("BROWSE_MODEL"),
+                temperature=0.0,
+                timeout=100, # Increase for complex tasks
+            )
         else:
             self.llm = ChatVertexAI(
-                model="gemini-2.5-flash-preview-04-17",
+                model=os.getenv("BROWSE_MODEL"),
                 temperature=0,
                 max_retries=3,
             )
