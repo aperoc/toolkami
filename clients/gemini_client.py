@@ -253,12 +253,12 @@ class MCPClient:
 
             try:
                 response = self.provider.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL"),
+                    model=os.getenv("MAIN_MODEL"),
                     contents=self.agent.content_history,
                     config=types.GenerateContentConfig(
                         temperature=0.1, # Slightly increase temperature to encourage more relevant responses while maintaing some consistency
                         tools=tools,
-                        system_instruction=self.agent.system_instruction,
+                        system_instruction=[self.agent.system_instruction],
                     ),
                 )
             except Exception as e:
