@@ -24,9 +24,8 @@ class Agent:
     
     def _initialize_system_instruction(self):
         """Initializes the system instruction with the default prompt."""
-        self.system_instruction = """{self.edit_instruction}.
-You are a pro-active AI assistant named 'Jarvis' that is confident and proceeds to carry out next action required to complete the user's request.
-Always use the tool 'ask' to ask the user for clarification if user input is required e.g. what to do next.
+        self.system_instruction = """{self.edit_instruction}
+{self.agent_instruction}
 """
 
     def _initialize_history(self):
@@ -41,6 +40,26 @@ Always use the tool 'ask' to ask the user for clarification if user input is req
         """Save the content history to a file."""
         with open("content_history.json", "w") as f:
             f.write(jsonpickle.encode(self.content_history, indent=2))
+
+    def agent_instruction(self, instruction: str):
+        """Agent instruction."""
+        instruction = """Act as an expert software developer. Your task is to iteratively improve the provided codebase.
+
+1. Prior programs can be found in the directory '/workspaces/toolkami/projects/perlin/results' and saved with convention '{score}_{md5sum}.py'.
+2. From the file with top 10 best scores (closer to 0), sample 2 program and attempt to improve them.
+3. You are only allowed to edit the content between # EVOLVE-BLOCK-START and # EVOLVE-BLOCK-END.
+4. Create a new file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+5. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
+
+"""
+        return instruction
+    
+    def default_agent_instruction(self, instruction: str):
+        """Default agent instruction."""
+        instruction = """You are a pro-active AI assistant named 'Jarvis' that is confident and proceeds to carry out next action required to complete the user's request.
+Always use the tool 'ask' to ask the user for clarification if user input is required e.g. what to do next.
+"""
+        return instruction
 
     def edit_instruction(self, instruction: str):
         """Diff edit instruction."""
@@ -120,5 +139,5 @@ import math_utils
 6. If you need to edit files not in the context, ask the user to add them first  
   
 Following these instructions will ensure your edits can be properly applied to the document.
- """
+"""
         return instruction
