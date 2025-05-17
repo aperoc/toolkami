@@ -193,6 +193,8 @@ class MCPClient:
         self._mcp_session_context = ClientSession(*self.sse_stream)
         self.mcp_session: ClientSession = await self.exit_stack.enter_async_context(self._mcp_session_context)
 
+        self.consecutive_errors = 0
+
         await self.mcp_session.initialize()
         print_pt(f"[DEBUG] Initialized SSE and MCP sessions...", "output.debug")
 
@@ -285,6 +287,19 @@ class MCPClient:
                 print_pt("[ERROR] No parts received from Gemini API", "output.error")
                 print_pt(str(response), "output.error")
                 print_pt(str(self.agent.content_history), "output.warning")
+                self.consecutive_errors += 1
+                if self.consecutive_errors > 3:
+                    self.agent.forget_history()
+                    self.consecutive_errors = 0
+                    print_pt("[ERROR] Forgetting history due to too many consecutive errors.", "output.error")
+                    # TODO: hack for pro-active tool calling
+                    # TODO: repeated multiple times, consolidate
+                    self.agent.add_content(
+                        types.Content(
+                            role="user",
+                            parts=[types.Part(text="Begin the task.")]
+                        )
+                    )
                 # Malformed function call, continue to the next part
                 continue
 
