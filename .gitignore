@@ -1,2 +1,4 @@
 __pycache__
 content_history.json
+*.pub
+content_history_*.json

@@ -1,23 +1,27 @@
 import os
+import uuid
 import jsonpickle
 from google.genai import types
 
 class Agent:
     def __init__(self):
 
+        self.agent_id = str(uuid.uuid4())
+        self.history_file = f"content_history_{self.agent_id}.json"
         self.system_instruction=""
         self._initialize_system_instruction()
 
-        if os.path.exists("content_history.json"):
+        if os.path.exists(self.history_file):
             try:
-                with open("content_history.json", "r") as f: # Changed to 'r' as decode doesn't need 'r+'
+                # TODO: allow history file to be specified
+                with open(self.history_file, "r") as f: # Changed to 'r' as decode doesn't need 'r+'
                     content = f.read()
                     if content: # Check if file is not empty
                         self.content_history = jsonpickle.decode(content)
                     else:
                         self._initialize_history() # Initialize if empty
             except Exception as e: # Catch potential errors during read/decode
-                 print(f"Warning: Error reading or decoding content_history.json: {e}. Initializing fresh history.")
+                 print(f"Warning: Error reading or decoding {self.history_file}: {e}. Initializing fresh history.")
                  self._initialize_history()
         else:
             self._initialize_history()
@@ -38,7 +42,7 @@ class Agent:
     
     def save_history(self):
         """Save the content history to a file."""
-        with open("content_history.json", "w") as f:
+        with open(self.history_file, "w") as f:
             f.write(jsonpickle.encode(self.content_history, indent=2))
 
     def forget_history(self):
@@ -53,7 +57,7 @@ class Agent:
 Create a perlin noise implementation that is similar to the target image (a fire in this case).
 1. Prior programs can be found in the directory '/workspaces/toolkami/projects/perlin/results' and saved with convention '{score}_{md5sum}.py'.
 2. From the file with top 10 best scores (closer to 0), sample 1 program, it doesn't have to be the best, sample randomly from top 10, and attempt to improve them.
-3. Make a copy of the file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+3. Make a copy of the file with the name 'candidate_{random_id}_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
 4. By only edting the content between '# EVOLVE-BLOCK-START' and '# EVOLVE-BLOCK-END', suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
 5. Apply the edit to the candidate file using only edit tool and nothing else, retry if it fails.
 6. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
