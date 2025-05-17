@@ -41,18 +41,24 @@ class Agent:
         with open("content_history.json", "w") as f:
             f.write(jsonpickle.encode(self.content_history, indent=2))
 
+    def forget_history(self):
+        """Forget the content history."""
+        self.content_history = []
+        self.save_history()
+
     def agent_instruction(self):
         """Agent instruction."""
         instruction = """Act as an expert software developer. Your task is to iteratively improve the provided codebase.
 
-Create a perlin noise implementation that is similar to the target image.
+Create a perlin noise implementation that is similar to the target image (a fire in this case).
 1. Prior programs can be found in the directory '/workspaces/toolkami/projects/perlin/results' and saved with convention '{score}_{md5sum}.py'.
-2. From the file with top 10 best scores (closer to 0), sample 1 program and attempt to improve them.
-3. Suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
-4. You are only allowed to edit the content between # EVOLVE-BLOCK-START and # EVOLVE-BLOCK-END.
-5. Create a new file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+2. From the file with top 10 best scores (closer to 0), sample 1 program, it doesn't have to be the best, sample randomly from top 10, and attempt to improve them.
+3. Make a copy of the file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+4. By only edting the content between '# EVOLVE-BLOCK-START' and '# EVOLVE-BLOCK-END', suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
+5. Apply the edit to the candidate file using only edit tool and nothing else, retry if it fails.
 6. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
-7. Repeat the process until you have 10 best programs.
+7. Forget current memory
+8. Repeat the process
 """
         return instruction
     

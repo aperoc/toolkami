@@ -318,6 +318,17 @@ class MCPClient:
                         )
                     )
 
+                    if function_call.name == "forget":
+                        self.agent.forget_history()
+                        # TODO: hack for pro-active tool calling
+                        self.agent.add_content(
+                            types.Content(
+                                role="user",
+                                parts=[types.Part(text="Begin the task.")]
+                            )
+                        )
+                        continue
+
                     if function_call.name == "ask":
                         # get user input
                         print(f"Model (clarification): {function_call.args['question']}")
