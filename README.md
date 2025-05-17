@@ -31,7 +31,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 3. Start the MCP server:
 ```bash
 # --reload enables Hot-reloading
-cd servers && PYTHONPATH=. uv run app.py --reload
+# --directories allow the directory to be written to
+cd servers && PYTHONPATH=. uv run app.py --directories /workspaces/toolkami/projects
 
 # For Browser Use (on linux)
 # sudo apt-get update && sudo apt-get install -y  libglib2.0-0t64 libnss3 libnspr4 libdbus-1-3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxkbcommon0 libatspi2.0-0t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64
