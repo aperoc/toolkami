@@ -17,11 +17,26 @@ def perlin2d(shape, res):
     angles = 2*np.pi*np.random.rand(ry+1, rx+1)
     gx, gy = np.cos(angles), np.sin(angles)
     def dot(ix,iy):
-        # Ensure we have valid dimensions for repeating
-        h_rep = max(1, H//ry)
-        w_rep = max(1, W//rx)
-        return ((XX-ix)*gx[iy:iy+ry, ix:ix+rx].repeat(h_rep,0).repeat(w_rep,1) +
-                (YY-iy)*gy[iy:iy+ry, ix:ix+rx].repeat(h_rep,0).repeat(w_rep,1))
+        # Get the correct slice of gradients
+        gx_slice = gx[iy:iy+ry, ix:ix+rx]
+        gy_slice = gy[iy:iy+ry, ix:ix+rx]
+        # Calculate exact repeat factors to match target dimensions
+        h_rep = H // gx_slice.shape[0]
+        w_rep = W // gx_slice.shape[1]
+        # Ensure we have at least one repeat
+        h_rep = max(1, h_rep)
+        w_rep = max(1, w_rep)
+        # Resize to match XX and YY dimensions exactly
+        gx_resized = np.repeat(np.repeat(gx_slice, h_rep, axis=0), w_rep, axis=1)
+        gy_resized = np.repeat(np.repeat(gy_slice, h_rep, axis=0), w_rep, axis=1)
+        # Trim if we overshot
+        if gx_resized.shape[0] > H:
+            gx_resized = gx_resized[:H, :]
+            gy_resized = gy_resized[:H, :]
+        if gx_resized.shape[1] > W:
+            gx_resized = gx_resized[:, :W]
+            gy_resized = gy_resized[:, :W]
+        return ((XX-ix)*gx_resized + (YY-iy)*gy_resized)
     n00 = dot(0,0); n10 = dot(1,0); n01 = dot(0,1); n11 = dot(1,1)
     u, v = fade(XX), fade(YY)
     lerp = lambda a,b,t: a*(1-t)+b*t
@@ -37,7 +52,7 @@ def fractal(shape, base_res, octaves=4, persistence=0.5):
 
 ########### TARGET IMAGE (fire.jpg) ###########
 H,W = 128,128
-target_img = np.array(Image.open("fire.jpg").convert("L").resize((W,H))) / 255.0
+target_img = np.array(Image.open("/workspaces/toolkami/projects/perlin/fire.jpg").convert("L").resize((W,H))) / 255.0
 
 # >>> Replace with something like:
 # target_img = np.array(Image.open("your_fire.jpg").convert("L").resize((W,H))) / 255.0
@@ -81,4 +96,6 @@ axs[0,0].imshow(target_img,cmap='inferno'); axs[0,0].set_title("Target"); axs[0,
 for i,img in enumerate(best_imgs):
     r,c=divmod(i+1,4); axs[r,c].imshow(img,cmap='inferno')
     axs[r,c].set_title(f"G{i}"); axs[r,c].axis('off')
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+plt.savefig('perlin_evolution.png', dpi=300, bbox_inches='tight')
+plt.close()
