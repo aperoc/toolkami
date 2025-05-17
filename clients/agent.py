@@ -24,7 +24,8 @@ class Agent:
     
     def _initialize_system_instruction(self):
         """Initializes the system instruction with the default prompt."""
-        self.system_instruction = """You are a pro-active AI assistant that is confident and proceeds to carry out next action required to complete the user's request.
+        self.system_instruction = """{self.edit_instruction}.
+You are a pro-active AI assistant named 'Jarvis' that is confident and proceeds to carry out next action required to complete the user's request.
 Always use the tool 'ask' to ask the user for clarification if user input is required e.g. what to do next.
 """
 
@@ -40,3 +41,84 @@ Always use the tool 'ask' to ask the user for clarification if user input is req
         """Save the content history to a file."""
         with open("content_history.json", "w") as f:
             f.write(jsonpickle.encode(self.content_history, indent=2))
+
+    def edit_instruction(self, instruction: str):
+        """Diff edit instruction."""
+        instruction = """You might receive multiple files with user instruction to make changes to them using a diff-fenced format. 
+
+Files are presented with their relative path followed by code fence markers and the complete file content:
+
+## How to make Edits (diff-fenced format):
+When making changes, you MUST use the SEARCH/REPLACE block format as follows:
+
+1. Basic Format Structure
+```diff
+filename.py
+<<<<<<< SEARCH  
+// original text that should be found and replaced  
+=======  
+// new text that will replace the original content  
+>>>>>>> REPLACE  
+```
+  
+2. Format Rules: 
+- The first line must be a code fence opening marker (```diff)  
+- The second line must contain ONLY the file path, exactly as shown to you  
+- The SEARCH block must contain the exact content to be replaced  
+- The REPLACE block contains the new content  
+- End with a code fence closing marker (```)  
+- Include enough context in the SEARCH block to uniquely identify the section to change  
+- Keep SEARCH/REPLACE blocks concise - break large changes into multiple smaller blocks  
+- For multiple changes to the same file, use multiple SEARCH/REPLACE blocks  
+  
+3. **Creating New Files**: Use an empty SEARCH section:  
+
+```diff
+new_file.py
+<<<<<<< SEARCH  
+=======  
+# New file content goes here  
+def new_function():  
+    return "Hello World"  
+>>>>>>> REPLACE
+``` 
+4. **Moving Content**: Use two SEARCH/REPLACE blocks:  1. One to delete content from its original location (empty REPLACE section). 2. One to add it to the new location (empty SEARCH section)  
+
+5. **Multiple Edits**: Present each edit as a separate SEARCH/REPLACE block  
+
+```diff
+math_utils.py
+<<<<<<< SEARCH  
+def factorial(n):  
+    if n == 0:  
+        return 1  
+    else:  
+        return n * factorial(n-1)  
+=======  
+import math  
+  
+def factorial(n):  
+    return math.factorial(n)  
+>>>>>>> REPLACE
+
+```diff
+app.py
+<<<<<<< SEARCH  
+from utils import helper  
+=======  
+from utils import helper  
+import math_utils  
+>>>>>>> REPLACE  
+  
+## Important Guidelines  
+  
+1. Always include the EXACT file path as shown in the context  
+2. Make sure the SEARCH block EXACTLY matches the existing content  
+3. Break large changes into multiple smaller, focused SEARCH/REPLACE blocks  
+4. Only edit files that have been added to the context  
+5. Explain your changes before presenting the SEARCH/REPLACE blocks  
+6. If you need to edit files not in the context, ask the user to add them first  
+  
+Following these instructions will ensure your edits can be properly applied to the document.
+ """
+        return instruction

@@ -321,6 +321,8 @@ class MCPClient:
                     if function_call.name == "ask":
                         # get user input
                         print(f"Model (clarification): {function_call.args['question']}")
+                        self.agent.save_history()
+
                         answer = await self.prompt_session.prompt_async(
                             FormattedText([("class:prompt", "User (clarification): ")]),
                             style=PROMPT_STYLE_OBJ
