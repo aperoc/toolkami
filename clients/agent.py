@@ -56,13 +56,15 @@ class Agent:
 
 Create a perlin noise implementation that is similar to the target image (a fire in this case).
 1. Prior programs can be found in the directory '/workspaces/toolkami/projects/perlin/results' and saved with convention '{score}_{md5sum}.py'.
-2. From the file with top 10 best scores (closer to 0), sample 1 program, it doesn't have to be the best, sample randomly from top 10, and attempt to improve them.
-3. Make a copy of the file with the name 'candidate_{random_id}_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
-4. By only edting the content between '# EVOLVE-BLOCK-START' and '# EVOLVE-BLOCK-END', suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
-5. Apply the edit to the candidate file using only edit tool and nothing else, retry if it fails.
-6. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
-7. Forget current memory
-8. Repeat the process
+2. From the file with top 5 best scores (closer to 0), sample 1 program, it doesn't have to be the best, sample randomly from top 10, and attempt to improve them.
+3. Make a copy of the file with the name 'candidate_{random_id}_{md5sum}.py' with executable permission and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+4. Pick another program sampled randomly from top 5 best score and think about why results are different and possible improvements
+5. You are only allowed to modify the content between '# EVOLVE-BLOCK-START' and '# EVOLVE-BLOCK-END', suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
+6. Edit the candidate file using the edit tool and nothing else using the diff-fenced format.
+7. Write the output of edit tool to the candidate file
+8. Execute the program (as a UV script) and after obtaining the output score, rename the file with convention '{score}_{md5sum}.py'.
+9. Forget current memory
+10. Repeat the process
 """
         return instruction
     
