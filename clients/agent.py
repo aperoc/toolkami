@@ -24,8 +24,8 @@ class Agent:
     
     def _initialize_system_instruction(self):
         """Initializes the system instruction with the default prompt."""
-        self.system_instruction = """{self.edit_instruction}
-{self.agent_instruction}
+        self.system_instruction = f"""{self.edit_instruction()}
+{self.agent_instruction()}
 """
 
     def _initialize_history(self):
@@ -41,27 +41,29 @@ class Agent:
         with open("content_history.json", "w") as f:
             f.write(jsonpickle.encode(self.content_history, indent=2))
 
-    def agent_instruction(self, instruction: str):
+    def agent_instruction(self):
         """Agent instruction."""
         instruction = """Act as an expert software developer. Your task is to iteratively improve the provided codebase.
 
+Create a perlin noise implementation that is similar to the target image.
 1. Prior programs can be found in the directory '/workspaces/toolkami/projects/perlin/results' and saved with convention '{score}_{md5sum}.py'.
-2. From the file with top 10 best scores (closer to 0), sample 2 program and attempt to improve them.
-3. You are only allowed to edit the content between # EVOLVE-BLOCK-START and # EVOLVE-BLOCK-END.
-4. Create a new file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
-5. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
-
+2. From the file with top 10 best scores (closer to 0), sample 1 program and attempt to improve them.
+3. Suggest a new idea to improve the code that is inspired by your expert knowledge of graphics and optimization.
+4. You are only allowed to edit the content between # EVOLVE-BLOCK-START and # EVOLVE-BLOCK-END.
+5. Create a new file with the name 'candidate_{md5sum}.py' and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+6. Run the program (executing as a uv script) and rename the file with convention '{score}_{md5sum}.py'.
+7. Repeat the process until you have 10 best programs.
 """
         return instruction
     
-    def default_agent_instruction(self, instruction: str):
+    def default_agent_instruction(self):
         """Default agent instruction."""
         instruction = """You are a pro-active AI assistant named 'Jarvis' that is confident and proceeds to carry out next action required to complete the user's request.
 Always use the tool 'ask' to ask the user for clarification if user input is required e.g. what to do next.
 """
         return instruction
 
-    def edit_instruction(self, instruction: str):
+    def edit_instruction(self):
         """Diff edit instruction."""
         instruction = """You might receive multiple files with user instruction to make changes to them using a diff-fenced format. 
 
