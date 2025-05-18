@@ -92,12 +92,14 @@ class FilesystemModule:
             return result
             
         @mcp.tool()
-        async def list_directory(path: str, recursive: bool = False) -> List[Dict[str, Any]]:
+        async def list_directory(path: str, recursive: bool = False, sort_order: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
             """List contents of a directory.
             
             Args:
                 path: The directory path to list
                 recursive: If True, recursively list all subdirectories and their contents
+                sort_order: Optional sort order for filenames ('asc' or 'desc'). If None, no sorting is applied
+                limit: Optional maximum number of entries to return. If None, all entries are returned
             """
             entries = []
             base_path = pathlib.Path(path)
@@ -119,6 +121,17 @@ class FilesystemModule:
                         "path": str(entry),
                         "type": "file" if entry.is_file() else "directory",
                     })
+            
+            # Apply sorting if requested
+            if sort_order:
+                if sort_order not in ['asc', 'desc']:
+                    raise ValueError("sort_order must be either 'asc' or 'desc'")
+                # Sort by filename (last part of the path)
+                entries.sort(key=lambda x: pathlib.Path(x["path"]).name, reverse=(sort_order == 'desc'))
+            
+            # Apply limit if requested
+            if limit is not None:
+                entries = entries[:limit]
             
             return entries
 
