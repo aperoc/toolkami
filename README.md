@@ -13,6 +13,19 @@ Watch it in action:
 async def ask(question: str) -> str:
 ```
 
+## Use Cases
+
+### Google's AlphaEvolve: ToolKami style
+
+A minimal implementation of AlphaEvolve using this framework along with diff-fenced editing.
+- [Detailed Writeup](https://toolkami.com/alphaevolve-toolkami-style/)
+- [Code](https://github.com/aperoc/toolkami/pull/5)
+
+![AlphaEvolve's Architecture](https://lh3.googleusercontent.com/0arf1iMoZrNmKp9wHT5nU5Qp1D834jAUD2mlSA2k8dG3lzW81deaxqBXVuYOLlUiu-R1Luz4Kr2j8wosjdRlJeGZK_pRwiedtQR5qtIneDETuljkpMg=w1232-rw)
+(Credits to https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/)
+
+
+
 ## Quickstart
 
 Devcontainer (`.devcontainer`) included and useable, otherwise proceed with manual install.
@@ -31,7 +44,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 3. Start the MCP server:
 ```bash
 # --reload enables Hot-reloading
-cd servers && PYTHONPATH=. uv run app.py --reload
+# --directories allow folders to be written to
+cd servers && PYTHONPATH=. uv run app.py --reload --directories /workspaces/toolkami/projects
 
 # For Browser Use (on linux)
 # sudo apt-get update && sudo apt-get install -y  libglib2.0-0t64 libnss3 libnspr4 libdbus-1-3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxkbcommon0 libatspi2.0-0t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64
@@ -53,8 +67,12 @@ cd servers && PYTHONPATH=. uv run app.py --reload
 ## Roadmap
 * [x] OpenAI compatible APIs (including Anthropic)
 * [ ] System prompt guidelines with single file project templates
+* [ ] OpenAI editing format
 
 ## Limitations
 - This is a customisable sharp tool for now. Guardrails will only be implemented over time.
 
-For enquiries, feel free to reach out to toolkami@aperoc.com.
+## Social
+- [Blog](https://toolkami.com/blog/)
+- [Twitter](https://x.com/tool_kami)
+- [toolkami@aperoc.com](mailto:toolkami@aperoc.com)
