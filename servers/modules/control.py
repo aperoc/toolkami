@@ -45,5 +45,10 @@ class ControlModule:
             """
             return question
 
+        @mcp.tool()
+        async def forget() -> str:
+            """Forget the current context in memory."""
+            return "Forgetting the current context in memory."
+
 # Create a singleton instance of the module
 control_module = ControlModule() 
