@@ -55,9 +55,9 @@ class Agent:
         instruction = """Act as an expert software developer. Your task is to iteratively improve the provided codebase.
 
 Create a perlin noise implementation that is similar to the target image (a fire in this case).
-1. Use list_directory tool with sort_order 'asc' and limit 10 in the directory '/workspaces/toolkami/projects/perlin/results' which were saved with convention '{score}_{md5sum}.py'.
+1. Use list_directory tool with sort_order 'asc' and limit 10 in the directory '/workspaces/toolkami-rnd/projects/perlin/results' which were saved with convention '{score}_{md5sum}.py'.
 2. Sample 1 program from the list, it doesn't have to be the best, sample randomly.
-3. Make a copy of the file with the name 'candidate_{random_id}_{md5sum}.py' with executable permission and save it in the directory '/workspaces/toolkami/projects/perlin/results'.
+3. Make a copy of the file with the name 'candidate_{random_id}_{md5sum}.py' with executable permission and save it in the directory '/workspaces/toolkami-rnd/projects/perlin/results'.
 4. You are only allowed to modify the content between '# EVOLVE-BLOCK-START' and '# EVOLVE-BLOCK-END', suggest a new idea to improve the code that is inspired by your expert knowledge of game programming, graphics and optimization.
 5. Edit the candidate file using the edit tool with the diff-fenced format.
 6. Write the output of edit tool to the candidate file

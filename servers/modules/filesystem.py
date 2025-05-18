@@ -48,14 +48,21 @@ class FilesystemModule:
             return pathlib.Path(path).read_text()
 
         @mcp.tool()
-        async def write_file(path: str, content: str) -> None:
-            """Write content to a file."""
+        async def write_file(path: str, content: str) -> Dict[str, Any]:
+            """Write content to a file.
+            
+            Returns:
+                Dict containing:
+                    - success: bool indicating if write was successful
+                    - path: str containing the file path that was written to
+            """
 
             # Only allow writing to allowed directories
             if not any(path.startswith(allowed_dir) for allowed_dir in self.allowed_directories):
                 raise ValueError(f"Writing to {path} is not allowed. Allowed directories: {self.allowed_directories}")
 
             pathlib.Path(path).write_text(content)
+            return {"success": True, "path": path}
 
         @mcp.tool()
         async def diff_fenced_edit_file(original_text: str, diff_text: str) -> str:
