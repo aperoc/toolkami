@@ -1,11 +1,16 @@
 # Toolkami
 
-**Seven tools is all you need**. A minimal AI agent that just works, using only seven tools. Comes with hands-free `Turbo mode` and `Hot-reloading` for self-modification.
+[![The best DX for structured AI Workflows](images/hero.gif)](mailto:toolkami@aperoc.com)
 
-![7 tools: Read, Write Diff, Browse, Command, Ask, Think](images/7-tools.png)
+**Seven tools is all you need**. A minimal AI agent framework that just works, using only seven tools. Comes with hands-free `Turbo mode` and `Hot-reloading` for self-modification.
 
-Watch it in action:
-![Agent demo](images/agent-demo.gif)
+Following the UNIX philosophy - build upon a collection of minimal, composable tools that scales with LLM's capabilities.
+<a href="https://toolkami.com">
+  <img src="images/7-tools.png" alt="7 tools: Ask, Browse, File, Shell + 3 Task-specific tools" style="border-radius:6px;">
+</a>
+
+**Watch it in action:**
+![Demo of agent browsing the web](images/agent-demo.gif)
 
 **Go Turbo**: The standard pace is for chumps. Have it go full autonomous by disabling `ask`.
 ```python
