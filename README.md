@@ -1,35 +1,42 @@
-# Toolkami
+# Toolkami (https://toolkami.com)
 
 [![The best DX for structured AI Workflows](images/hero.gif)](mailto:toolkami@aperoc.com)
 
-**Seven tools is all you need**. A minimal AI agent framework that just works, using only seven tools. Comes with hands-free `Turbo mode` and `Hot-reloading` for self-modification.
+**Seven tools is all you need**. A minimal AI agent framework that just works, using only 7 tools. Comes with hands-free `Turbo mode` and `Hot-reloading` for self-modification.
 
 Following the UNIX philosophy - build upon a collection of minimal, composable tools that scales with LLM's capabilities.
 <a href="https://toolkami.com">
   <img src="images/7-tools.png" alt="7 tools: Ask, Browse, File, Shell + 3 Task-specific tools" style="border-radius:6px;">
 </a>
 
-**Watch it in action:**
-![Demo of agent browsing the web](images/agent-demo.gif)
-
-**Go Turbo**: The standard pace is for chumps. Have it go full autonomous by disabling `ask`.
+**Go Turbo**: The standard pace is for chumps. Have it go full autonomous by commenting out the `ask` tool.
 ```python
 # @mcp.tool()
 async def ask(question: str) -> str:
 ```
 
-## Use Cases
+<span style="color: red;">^^^</span> **Interleave** non-deterministic AI behaviour with normal code execution. First, define your AI workflow in a declarative way in YAML.
+```yml
+name: create_tests
+model: gpt-4.1
 
-### Google's AlphaEvolve: ToolKami style
+tools:
+  - Kami::Tools::Grep
+  - Kami::Tools::EditFile
 
-A minimal implementation of AlphaEvolve using this framework along with diff-fenced editing.
-- [Detailed Writeup](https://toolkami.com/alphaevolve-toolkami-style/)
-- [Code](https://github.com/aperoc/toolkami/pull/5)
+steps:
+  - git_diff: $(git diff)
+  - Generate a list of tests to write based on the changes.
+  - run_linter: $(rubocop)
+```
 
-![AlphaEvolve's Architecture](https://lh3.googleusercontent.com/0arf1iMoZrNmKp9wHT5nU5Qp1D834jAUD2mlSA2k8dG3lzW81deaxqBXVuYOLlUiu-R1Luz4Kr2j8wosjdRlJeGZK_pRwiedtQR5qtIneDETuljkpMg=w1232-rw)
-(Credits to https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/)
+<span style="color: red;">^^^</span> And use our **node-based editor** for non-technical members to customize and test prompts.
+![node based editor](images/node-editor.png)
 
+Features marked <span style="color; red;">^^^</span>
 
+**Watch it in action:**
+![Demo of agent browsing the web](images/agent-demo.gif)
 
 ## Quickstart
 
@@ -77,7 +84,19 @@ cd servers && PYTHONPATH=. uv run app.py --reload --directories /workspaces/tool
 ## Limitations
 - This is a customisable sharp tool for now. Guardrails will only be implemented over time.
 
+## Use Cases
+
+### Google's AlphaEvolve: ToolKami style
+
+A minimal implementation of AlphaEvolve using this framework along with diff-fenced editing.
+- [Detailed Writeup](https://toolkami.com/alphaevolve-toolkami-style/)
+- [Code](https://github.com/aperoc/toolkami/pull/5)
+
+![AlphaEvolve's Architecture](https://lh3.googleusercontent.com/0arf1iMoZrNmKp9wHT5nU5Qp1D834jAUD2mlSA2k8dG3lzW81deaxqBXVuYOLlUiu-R1Luz4Kr2j8wosjdRlJeGZK_pRwiedtQR5qtIneDETuljkpMg=w1232-rw)
+(Credits to https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/)
+
 ## Social
-- [Blog](https://toolkami.com/blog/)
+- [Website](https://toolkami.com)
+- [Blog](https://blog.toolkami.com/blog/)
 - [Twitter](https://x.com/tool_kami)
 - [toolkami@aperoc.com](mailto:toolkami@aperoc.com)
