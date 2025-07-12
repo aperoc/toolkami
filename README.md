@@ -33,7 +33,7 @@ steps:
 <span style="color: red;">^^^</span> And use our **node-based editor** for non-technical members to customize and test prompts.
 ![node based editor](images/node-editor.png)
 
-Features marked <span style="color; red;">^^^</span>
+Features marked <span style="color: red;">^^^</span> are in private beta, please [contact us](mailto:toolkami@aperoc.com) for access.
 
 **Watch it in action:**
 ![Demo of agent browsing the web](images/agent-demo.gif)
