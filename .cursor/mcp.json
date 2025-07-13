@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "toolkami-fs": {
+            "url": "http://127.0.0.1:8002/filesystem/mcp",
+            "headers": {
+                "API_KEY": "value"
+            }
+        }
+    }
+}

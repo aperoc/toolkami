@@ -73,11 +73,20 @@ cd servers && PYTHONPATH=. uv run app.py --reload --directories /workspaces/tool
 ./clients/openai_client.py http://localhost:8081/sse # --debug
 ```
 
+## (In-progress) Beta version
+Migrating MCP from SSE to SHTTP
+
+1. Start the server
+```bash
+uv run server/__main__.py
+```
+
 ## Troubleshooting
 * Delete `content_history.json` to clear message history.
 
 ## Roadmap
 * [x] OpenAI compatible APIs (including Anthropic)
+* [ ] **(in-progress)** Migration from SSE to SHTTP
 * [ ] System prompt guidelines with single file project templates
 * [ ] OpenAI editing format
 
