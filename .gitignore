@@ -1,2 +1,5 @@
 __pycache__
 content_history.json
+.devcontainer
+.cursor
+.vscode
