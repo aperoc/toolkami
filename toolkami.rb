@@ -349,7 +349,7 @@ if __FILE__ == $0
         toolkami.rb wt drop        # Delete worktree and branch
         toolkami.rb sb             # Run Docker sandbox from .toolkami/docker-compose.yml
         toolkami.rb sb exec [CMD...]  # Exec into running sandbox container (default: bash)
-        toolkami.rb sb build       # Rebuild sandbox image (compose build --no-cache)
+        toolkami.rb sb build [--no-cache]  # Build sandbox image (with optional compose flags)
 
       Config Selection:
         Place configs in $TOOLKAMI_PATH/.configs/
@@ -412,7 +412,22 @@ if __FILE__ == $0
 
         RUN npm install -g @openai/codex
 
-        CMD ["/bin/bash"]
+        # Install UV
+        RUN curl -fsSL https://astral.sh/uv/install.sh | sh
+        ENV PATH="/root/.local/bin:$PATH"
+
+        # Install Go
+        RUN wget \
+            https://go.dev/dl/go1.25.3.linux-arm64.tar.gz && \
+            tar -C /usr/local -xzf go1.25.3.linux-arm64.tar.gz && \
+            rm -rf go1.25.3.linux-arm64.tar.gz
+        ENV PATH="/usr/local/go/bin:$PATH"
+        ENV PATH="/root/go/bin:$PATH"
+
+        RUN curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/install.sh | bash
+        RUN uv tool install beads-mcp
+
+      CMD ["/bin/bash"]
       DOCKERFILE
 
       # Create example config.toml
@@ -425,6 +440,9 @@ if __FILE__ == $0
 
         [shell_environment_policy]
         ignore_default_excludes = true
+
+        [mcp_servers.beads]
+        command = "beads-mcp"
 
         [tools]
         web_search = true
@@ -671,7 +689,9 @@ if __FILE__ == $0
 
     case subcommand
     when 'build'
-      puts "cd #{quoted_pwd} && docker compose -f .toolkami/docker-compose.yml build --no-cache #{service_name}"
+      build_options = ARGV.map { |arg| Shellwords.escape(arg) }
+      options_segment = build_options.empty? ? "" : "#{build_options.join(' ')} "
+      puts "cd #{quoted_pwd} && docker compose -f .toolkami/docker-compose.yml build #{options_segment}#{service_name}"
     when 'exec'
       exec_args = ARGV.empty? ? ['bash'] : ARGV
       exec_command = exec_args.map { |arg| Shellwords.escape(arg) }.join(' ')
