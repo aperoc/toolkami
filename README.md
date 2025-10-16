@@ -15,8 +15,9 @@ Commands:
 * `toolkami init [PATH]`: Generate shell function
 * `toolkami cd [QUERY]`: Interactive selector
 * `toolkami worktree`: Create worktree from current repo
-* `toolkami sandbox`: Run Docker sandbox from .toolkami/docker-compose.yml
-  * `rebuild`: Re-build service image 
+* `toolkami sb`: Run Docker sandbox from .toolkami/docker-compose.yml
+  * `build`: Re-build service image 
+  * `exec [CMD...]`: Exec into the sandbox container (defaults to interactive `bash`)
 * `toolkami merge`: Merge worktree changes back to parent repo
 * `toolkami drop`: Delete worktree and branch
 

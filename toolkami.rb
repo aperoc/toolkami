@@ -3,6 +3,7 @@
 require 'io/console'
 require 'fileutils'
 require 'yaml'
+require 'shellwords'
 
 # Double-buffered UI module - adapted from try.rb
 module UI
@@ -346,8 +347,9 @@ if __FILE__ == $0
         toolkami.rb worktree       # Create worktree from current repo
         toolkami.rb merge          # Merge worktree changes back to parent repo
         toolkami.rb drop           # Delete worktree and branch
-        toolkami.rb sandbox        # Run Docker sandbox from .toolkami/docker-compose.yml
-        toolkami.rb sandbox rebuild # Rebuild sandbox image (compose build --no-cache)
+        toolkami.rb sb             # Run Docker sandbox from .toolkami/docker-compose.yml
+        toolkami.rb sb exec [CMD...]  # Exec into running sandbox container (default: bash)
+        toolkami.rb sb build       # Rebuild sandbox image (compose build --no-cache)
 
       Config Selection:
         Place configs in $TOOLKAMI_PATH/.configs/
@@ -360,6 +362,29 @@ if __FILE__ == $0
       Environment:
         TOOLKAMI_PATH - Root directory (default: ~/kamis)
     HELP
+  end
+
+  def sanitize_service_name(name)
+    name.downcase.gsub(/[^a-z0-9_.-]/, '-').gsub(/-+/, '-').sub(/^-+/, '').sub(/-+$/, '')
+  end
+
+  def determine_service_name(compose_path)
+    data = YAML.safe_load(File.read(compose_path))
+    if data.is_a?(Hash) && data['services'].is_a?(Hash) && !data['services'].empty?
+      data['services'].keys.first.to_s
+    else
+      sanitize_service_name(File.basename(Dir.pwd))
+    end
+  rescue
+    sanitize_service_name(File.basename(Dir.pwd))
+  end
+
+  def ensure_docker_available!
+    return if system('command -v docker >/dev/null 2>&1')
+
+    STDERR.puts "Error: Docker is not installed or not in PATH"
+    STDERR.puts "Install Docker from https://docs.docker.com/get-docker/"
+    exit 1
   end
 
   command = ARGV.shift
@@ -434,7 +459,7 @@ if __FILE__ == $0
       toolkami() {
         script_path='#{script_path}'
         case "$1" in
-          worktree|init|merge|drop|sandbox)
+          worktree|init|merge|drop|sb)
             cmd=$(/usr/bin/env ruby "$script_path" "$@" 2>/dev/tty)
             ;;
           *)
@@ -607,7 +632,7 @@ if __FILE__ == $0
       puts "cd #{quoted_parent} && git worktree remove --force #{quoted_worktree} && git branch -D #{branch_name}"
     end
 
-  when 'sandbox'
+  when 'sb'
     # Check for .toolkami/docker-compose.yml
     compose_path = File.join(Dir.pwd, '.toolkami', 'docker-compose.yml')
     unless File.exist?(compose_path)
@@ -617,33 +642,24 @@ if __FILE__ == $0
     end
 
     # Check if Docker is available
-    unless system('command -v docker >/dev/null 2>&1')
-      STDERR.puts "Error: Docker is not installed or not in PATH"
-      STDERR.puts "Install Docker from https://docs.docker.com/get-docker/"
-      exit 1
-    end
+    ensure_docker_available!
 
     # Quote current directory for shell command
     quoted_pwd = "'" + Dir.pwd.gsub("'", %q('"'"')) + "'"
 
-    # Optional subcommand: rebuild
+    # Optional subcommand: build, exec
     subcommand = ARGV.shift
 
     # Determine service name from compose file, fallback to sanitized directory name
-    service_name = begin
-      data = YAML.safe_load(File.read(compose_path))
-      if data && data['services'].is_a?(Hash) && !data['services'].empty?
-        data['services'].keys.first.to_s
-      else
-        File.basename(Dir.pwd).downcase.gsub(/[^a-z0-9_.-]/, '-').gsub(/-+/, '-').sub(/^-+/, '').sub(/-+$/, '')
-      end
-    rescue
-      File.basename(Dir.pwd).downcase.gsub(/[^a-z0-9_.-]/, '-').gsub(/-+/, '-').sub(/^-+/, '').sub(/-+$/, '')
-    end
+    service_name = determine_service_name(compose_path)
 
-    # Emit docker compose command(s)
-    if subcommand == 'rebuild'
+    case subcommand
+    when 'build'
       puts "cd #{quoted_pwd} && docker compose -f .toolkami/docker-compose.yml build --no-cache #{service_name}"
+    when 'exec'
+      exec_args = ARGV.empty? ? ['bash'] : ARGV
+      exec_command = exec_args.map { |arg| Shellwords.escape(arg) }.join(' ')
+      puts "cd #{quoted_pwd} && docker compose -f .toolkami/docker-compose.yml exec -it #{service_name} #{exec_command}".strip
     else
       puts "cd #{quoted_pwd} && docker compose -f .toolkami/docker-compose.yml run --rm #{service_name}"
     end
