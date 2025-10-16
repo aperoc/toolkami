@@ -344,9 +344,9 @@ if __FILE__ == $0
       Usage:
         toolkami.rb init [PATH]    # Generate shell function
         toolkami.rb cd [QUERY]     # Interactive selector
-        toolkami.rb worktree       # Create worktree from current repo
-        toolkami.rb merge          # Merge worktree changes back to parent repo
-        toolkami.rb drop           # Delete worktree and branch
+        toolkami.rb wt [NAME]      # Create worktree from current repo
+        toolkami.rb wt merge       # Merge worktree changes back to parent repo
+        toolkami.rb wt drop        # Delete worktree and branch
         toolkami.rb sb             # Run Docker sandbox from .toolkami/docker-compose.yml
         toolkami.rb sb exec [CMD...]  # Exec into running sandbox container (default: bash)
         toolkami.rb sb build       # Rebuild sandbox image (compose build --no-cache)
@@ -459,7 +459,7 @@ if __FILE__ == $0
       toolkami() {
         script_path='#{script_path}'
         case "$1" in
-          worktree|init|merge|drop|sb)
+          wt|init|sb|worktree|merge|drop)
             cmd=$(/usr/bin/env ruby "$script_path" "$@" 2>/dev/tty)
             ;;
           *)
@@ -489,155 +489,171 @@ if __FILE__ == $0
       end
     end
 
-  when 'worktree'
-    # Get custom name from args or use repo name
-    custom_name = ARGV.join(' ')
+  when 'wt'
+    subcommand = ARGV.first
 
-    # Get current directory base name
-    base = if custom_name && !custom_name.strip.empty?
-      custom_name.gsub(/\s+/, '-')
-    else
-      File.basename(Dir.pwd)
-    end
+    case subcommand
+    when 'merge'
+      ARGV.shift
 
-    # Add date prefix
-    date_prefix = Time.now.strftime("%Y-%m-%d")
-    dir_name = "#{date_prefix}-#{base}"
-    full_path = File.join(ToolkamiSelector::DEFAULT_PATH, dir_name)
-
-    # Check if we're in a git repo
-    if File.directory?(File.join(Dir.pwd, '.git'))
-      # Check for config selection
-      config_selector = ConfigSelector.new(base_path: ToolkamiSelector::DEFAULT_PATH)
-      selected_config = config_selector.run
-
-      # Build shell command parts
-      quoted_path = "'" + full_path.gsub("'", %q('"'"')) + "'"
-      branch_name = "feature/#{dir_name}"
-      commands = [
-        "mkdir -p #{quoted_path}",
-        "git worktree add -b #{branch_name} #{quoted_path}"
-      ]
-
-      # Add config copy if selected
-      if selected_config
-        # Add confirmation message to shell output
-        commands << "echo '✓ Config: #{selected_config} → .toolkami/' >&2"
-
-        config_src = File.join(ToolkamiSelector::DEFAULT_PATH, '.configs', selected_config)
-        quoted_src = "'" + config_src.gsub("'", %q('"'"')) + "'"
-        toolkami_dir = File.join(full_path, '.toolkami')
-        quoted_toolkami = "'" + toolkami_dir.gsub("'", %q('"'"')) + "'"
-
-        commands << "mkdir -p #{quoted_toolkami}"
-        commands << "cp -r #{quoted_src}/. #{quoted_toolkami}/"
-
-        # After copying, rename the first docker compose service to the directory name (sanitized)
-        compose_dest = File.join(full_path, '.toolkami', 'docker-compose.yml')
-        quoted_compose = "'" + compose_dest.gsub("'", %q('"'"')) + "'"
-        service_name = dir_name.downcase.gsub(/[^a-z0-9_.-]/, '-').gsub(/-+/, '-').sub(/^-+/, '').sub(/-+$/, '')
-        quoted_service = "'" + service_name.gsub("'", %q('"'"')) + "'"
-        ruby_edit = %q{p=ARGV[0]; s=ARGV[1]; l=File.readlines(p); i=l.index{|x| x =~ /^\s*services\s*:/}; if i; j=i+1; while j<l.length && l[j] =~ /^\s*(?:#.*)?$/; j+=1; end; if j<l.length && l[j] =~ /^(\s+)([A-Za-z0-9_.-]+):/; ind=$1; l[j]=l[j].sub(/^(\s+)[A-Za-z0-9_.-]+:/, ind + s + ":"); File.write(p, l.join); end; end}
-        commands << "[ -f #{quoted_compose} ] && ruby -e '#{ruby_edit}' #{quoted_compose} #{quoted_service} || true"
+      # Check if we're in a git worktree
+      git_common_dir = `git rev-parse --git-common-dir 2>/dev/null`.strip
+      if $?.exitstatus != 0
+        STDERR.puts "Error: Not in a git repository"
+        exit 1
       end
 
-      commands << "cd #{quoted_path}"
-      puts commands.join(" && ")
+      git_dir = `git rev-parse --git-dir 2>/dev/null`.strip
+      if git_common_dir == git_dir || git_common_dir == '.git'
+        STDERR.puts "Error: Not in a worktree (you're in the main repository)"
+        exit 1
+      end
+
+      # Check for uncommitted changes
+      status_output = `git status --porcelain 2>/dev/null`.strip
+      if !status_output.empty?
+        STDERR.puts "Error: You have uncommitted changes. Please commit or stash them first."
+        STDERR.puts ""
+        STDERR.puts "Uncommitted changes:"
+        STDERR.puts status_output
+        exit 1
+      end
+
+      # Get current commit SHA
+      commit_sha = `git rev-parse HEAD 2>/dev/null`.strip
+      if commit_sha.empty?
+        STDERR.puts "Error: Could not determine current commit"
+        exit 1
+      end
+
+      # Get parent repo location
+      parent_repo = File.dirname(git_common_dir)
+
+      # Get current worktree path for cleanup
+      worktree_path = Dir.pwd
+      quoted_worktree = "'" + worktree_path.gsub("'", %q('"'"')) + "'"
+      quoted_parent = "'" + parent_repo.gsub("'", %q('"'"')) + "'"
+
+      # Get branch name for merge
+      branch_name = `git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
+
+      # Emit shell commands: cd to parent and squash-merge the branch, then return to worktree
+      if branch_name.empty? || branch_name == "HEAD"
+        # Fallback to cherry-pick for detached HEAD
+        puts "cd #{quoted_parent} && git cherry-pick #{commit_sha} && cd #{quoted_worktree}"
+      else
+        puts "cd #{quoted_parent} && git merge --squash #{branch_name} && git commit -m 'squash: merge #{branch_name}' && cd #{quoted_worktree}"
+      end
+
+    when 'drop'
+      ARGV.shift
+
+      # Check if we're in a git worktree
+      git_common_dir = `git rev-parse --git-common-dir 2>/dev/null`.strip
+      if $?.exitstatus != 0
+        STDERR.puts "Error: Not in a git repository"
+        exit 1
+      end
+
+      git_dir = `git rev-parse --git-dir 2>/dev/null`.strip
+      if git_common_dir == git_dir || git_common_dir == '.git'
+        STDERR.puts "Error: Not in a worktree (you're in the main repository)"
+        exit 1
+      end
+
+      # Get parent repo location
+      parent_repo = File.dirname(git_common_dir)
+
+      # Get current worktree path for cleanup
+      worktree_path = Dir.pwd
+      quoted_worktree = "'" + worktree_path.gsub("'", %q('"'"')) + "'"
+      quoted_parent = "'" + parent_repo.gsub("'", %q('"'"')) + "'"
+
+      # Emit shell commands: cd to parent, remove worktree and delete branch
+      branch_name = `git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
+      if branch_name.empty? || branch_name == "HEAD"
+        # Just remove worktree for detached HEAD
+        puts "cd #{quoted_parent} && git worktree remove --force #{quoted_worktree}"
+      else
+        # Remove worktree and delete branch
+        puts "cd #{quoted_parent} && git worktree remove --force #{quoted_worktree} && git branch -D #{branch_name}"
+      end
+
     else
-      STDERR.puts "Error: Not in a git repository"
-      exit 1
+      # Get custom name from args or use repo name
+      custom_name = ARGV.join(' ')
+
+      # Get current directory base name
+      base = if custom_name && !custom_name.strip.empty?
+        custom_name.gsub(/\s+/, '-')
+      else
+        File.basename(Dir.pwd)
+      end
+
+      # Add date prefix
+      date_prefix = Time.now.strftime("%Y-%m-%d")
+      dir_name = "#{date_prefix}-#{base}"
+      full_path = File.join(ToolkamiSelector::DEFAULT_PATH, dir_name)
+
+      # Check if we're in a git repo
+      if File.directory?(File.join(Dir.pwd, '.git'))
+        # Check for config selection
+        config_selector = ConfigSelector.new(base_path: ToolkamiSelector::DEFAULT_PATH)
+        selected_config = config_selector.run
+
+        # Build shell command parts
+        quoted_path = "'" + full_path.gsub("'", %q('"'"')) + "'"
+        branch_name = "feature/#{dir_name}"
+        commands = [
+          "mkdir -p #{quoted_path}",
+          "git worktree add -b #{branch_name} #{quoted_path}"
+        ]
+
+        # Add config copy if selected
+        if selected_config
+          # Add confirmation message to shell output
+          commands << "echo '✓ Config: #{selected_config} → .toolkami/' >&2"
+
+          config_src = File.join(ToolkamiSelector::DEFAULT_PATH, '.configs', selected_config)
+          quoted_src = "'" + config_src.gsub("'", %q('"'"')) + "'"
+          toolkami_dir = File.join(full_path, '.toolkami')
+          quoted_toolkami = "'" + toolkami_dir.gsub("'", %q('"'"')) + "'"
+
+          commands << "mkdir -p #{quoted_toolkami}"
+          commands << "cp -r #{quoted_src}/. #{quoted_toolkami}/"
+
+          # After copying, rename the first docker compose service to the directory name (sanitized)
+          compose_dest = File.join(full_path, '.toolkami', 'docker-compose.yml')
+          quoted_compose = "'" + compose_dest.gsub("'", %q('"'"')) + "'"
+          service_name = dir_name.downcase.gsub(/[^a-z0-9_.-]/, '-').gsub(/-+/, '-').sub(/^-+/, '').sub(/-+$/, '')
+          quoted_service = "'" + service_name.gsub("'", %q('"'"')) + "'"
+          ruby_edit = %q{p=ARGV[0]; s=ARGV[1]; l=File.readlines(p); i=l.index{|x| x =~ /^\s*services\s*:/}; if i; j=i+1; while j<l.length && l[j] =~ /^\s*(?:#.*)?$/; j+=1; end; if j<l.length && l[j] =~ /^(\s+)([A-Za-z0-9_.-]+):/; ind=$1; l[j]=l[j].sub(/^(\s+)[A-Za-z0-9_.-]+:/, ind + s + ":"); File.write(p, l.join); end; end}
+          commands << "[ -f #{quoted_compose} ] && ruby -e '#{ruby_edit}' #{quoted_compose} #{quoted_service} || true"
+        end
+
+        commands << "cd #{quoted_path}"
+        puts commands.join(" && ")
+      else
+        STDERR.puts "Error: Not in a git repository"
+        exit 1
+      end
     end
 
-  when 'merge'
-    # Check if we're in a git worktree
-    git_common_dir = `git rev-parse --git-common-dir 2>/dev/null`.strip
-    if $?.exitstatus != 0
-      STDERR.puts "Error: Not in a git repository"
-      exit 1
-    end
-
-    git_dir = `git rev-parse --git-dir 2>/dev/null`.strip
-    if git_common_dir == git_dir || git_common_dir == '.git'
-      STDERR.puts "Error: Not in a worktree (you're in the main repository)"
-      exit 1
-    end
-
-    # Check for uncommitted changes
-    status_output = `git status --porcelain 2>/dev/null`.strip
-    if !status_output.empty?
-      STDERR.puts "Error: You have uncommitted changes. Please commit or stash them first."
-      STDERR.puts ""
-      STDERR.puts "Uncommitted changes:"
-      STDERR.puts status_output
-      exit 1
-    end
-
-    # Get current commit SHA
-    commit_sha = `git rev-parse HEAD 2>/dev/null`.strip
-    if commit_sha.empty?
-      STDERR.puts "Error: Could not determine current commit"
-      exit 1
-    end
-
-    # Get parent repo location
-    # git_common_dir returns something like /path/to/repo/.git
-    # We want /path/to/repo
-    parent_repo = File.dirname(git_common_dir)
-
-    # Get current worktree path for cleanup
-    worktree_path = Dir.pwd
-    quoted_worktree = "'" + worktree_path.gsub("'", %q('"'"')) + "'"
-    quoted_parent = "'" + parent_repo.gsub("'", %q('"'"')) + "'"
-
-    # Get branch name for merge
-    branch_name = `git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
-
-    # Emit shell commands: cd to parent and squash-merge the branch, then return to worktree
-    if branch_name.empty? || branch_name == "HEAD"
-      # Fallback to cherry-pick for detached HEAD
-      puts "cd #{quoted_parent} && git cherry-pick #{commit_sha} && cd #{quoted_worktree}"
-    else
-      puts "cd #{quoted_parent} && git merge --squash #{branch_name} && git commit -m 'squash: merge #{branch_name}' && cd #{quoted_worktree}"
-    end
-
-  when 'drop'
-    # Check if we're in a git worktree
-    git_common_dir = `git rev-parse --git-common-dir 2>/dev/null`.strip
-    if $?.exitstatus != 0
-      STDERR.puts "Error: Not in a git repository"
-      exit 1
-    end
-
-    git_dir = `git rev-parse --git-dir 2>/dev/null`.strip
-    if git_common_dir == git_dir || git_common_dir == '.git'
-      STDERR.puts "Error: Not in a worktree (you're in the main repository)"
-      exit 1
-    end
-
-    # Get parent repo location
-    parent_repo = File.dirname(git_common_dir)
-
-    # Get current worktree path for cleanup
-    worktree_path = Dir.pwd
-    quoted_worktree = "'" + worktree_path.gsub("'", %q('"'"')) + "'"
-    quoted_parent = "'" + parent_repo.gsub("'", %q('"'"')) + "'"
-
-    # Emit shell commands: cd to parent, remove worktree and delete branch
-    branch_name = `git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
-    if branch_name.empty? || branch_name == "HEAD"
-      # Just remove worktree for detached HEAD
-      puts "cd #{quoted_parent} && git worktree remove --force #{quoted_worktree}"
-    else
-      # Remove worktree and delete branch
-      puts "cd #{quoted_parent} && git worktree remove --force #{quoted_worktree} && git branch -D #{branch_name}"
-    end
+  when 'worktree', 'merge', 'drop'
+    suggestions = {
+      'worktree' => "toolkami wt [NAME]",
+      'merge' => "toolkami wt merge",
+      'drop' => "toolkami wt drop"
+    }
+    STDERR.puts "Error: Command '#{command}' has been renamed. Use `#{suggestions[command]}` instead."
+    exit 1
 
   when 'sb'
     # Check for .toolkami/docker-compose.yml
     compose_path = File.join(Dir.pwd, '.toolkami', 'docker-compose.yml')
     unless File.exist?(compose_path)
       STDERR.puts "Error: No .toolkami/docker-compose.yml found in current directory"
-      STDERR.puts "Run 'toolkami worktree' from a git repo and select a config to create a sandbox."
+      STDERR.puts "Run 'toolkami wt' from a git repo and select a config to create a sandbox."
       exit 1
     end
 
